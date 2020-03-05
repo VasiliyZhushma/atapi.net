@@ -75,8 +75,8 @@ namespace JulMar.Atapi.Interop
         {
         }
 
-        internal HTCALL(uint preexistingHandle, bool ownsHandle) 
-            : base(new IntPtr((int)preexistingHandle), ownsHandle)
+        internal HTCALL(IntPtr preexistingHandle, bool ownsHandle) 
+            : base(preexistingHandle, ownsHandle)
         {
         }
 
@@ -84,7 +84,7 @@ namespace JulMar.Atapi.Interop
         {
             if (handle != IntPtr.Zero)
             {
-                NativeMethods.lineDeallocateCall((uint)handle.ToInt32());
+                NativeMethods.lineDeallocateCall(this);
                 handle = IntPtr.Zero;
             }
             return true;
@@ -110,8 +110,8 @@ namespace JulMar.Atapi.Interop
         {
         }
 
-        internal HTLINE(uint preexistingHandle, bool ownsHandle)
-            : base(new IntPtr((int)preexistingHandle), ownsHandle)
+        internal HTLINE(IntPtr preexistingHandle, bool ownsHandle)
+            : base(preexistingHandle, ownsHandle)
         {
         }
 
@@ -119,7 +119,7 @@ namespace JulMar.Atapi.Interop
         {
             if (handle != IntPtr.Zero)
             {
-                NativeMethods.lineClose((uint)handle.ToInt32());
+                NativeMethods.lineClose(this);
                 handle = IntPtr.Zero;
             }
             return true;
@@ -145,8 +145,8 @@ namespace JulMar.Atapi.Interop
         {
         }
 
-        internal HTPHONE(uint preexistingHandle, bool ownsHandle)
-            : base(new IntPtr((int)preexistingHandle), ownsHandle)
+        internal HTPHONE(IntPtr preexistingHandle, bool ownsHandle)
+            : base(preexistingHandle, ownsHandle)
         {
         }
 
@@ -154,7 +154,7 @@ namespace JulMar.Atapi.Interop
         {
             if (handle != IntPtr.Zero)
             {
-                NativeMethods.phoneClose((uint)handle.ToInt32());
+                NativeMethods.phoneClose(this);
                 handle = IntPtr.Zero;
             }
             return true;
@@ -163,11 +163,8 @@ namespace JulMar.Atapi.Interop
         /// <summary>
         /// Fixed according to http://msdn.microsoft.com/en-us/library/system.runtime.interopservices.safehandle.isinvalid(v=vs.80).aspx
         /// </summary>
-        public override bool IsInvalid
-        {
-            get { return IsClosed || handle == IntPtr.Zero; }
-        }
-    }
+        public override bool IsInvalid => IsClosed || handle == IntPtr.Zero;
+	}
 
     /// <summary>
     /// This class holds a TAPI application handle
@@ -180,8 +177,8 @@ namespace JulMar.Atapi.Interop
         {
         }
 
-        internal HTLINEAPP(uint preexistingHandle, bool ownsHandle)
-            : base(new IntPtr((int)(int)preexistingHandle), ownsHandle)
+        internal HTLINEAPP(IntPtr preexistingHandle, bool ownsHandle)
+            : base(preexistingHandle, ownsHandle)
         {
         }
 
@@ -189,7 +186,7 @@ namespace JulMar.Atapi.Interop
         {
             if (handle != IntPtr.Zero)
             {
-                NativeMethods.lineShutdown((uint)this.handle.ToInt32());
+                NativeMethods.lineShutdown(this);
                 handle = IntPtr.Zero;
             }
             return true;
@@ -215,8 +212,8 @@ namespace JulMar.Atapi.Interop
         {
         }
 
-        internal HTPHONEAPP(uint preexistingHandle, bool ownsHandle)
-            : base(new IntPtr((int)preexistingHandle), ownsHandle)
+        internal HTPHONEAPP(IntPtr preexistingHandle, bool ownsHandle)
+            : base(preexistingHandle, ownsHandle)
         {
         }
 
@@ -224,7 +221,7 @@ namespace JulMar.Atapi.Interop
         {
             if (handle != IntPtr.Zero)
             {
-                NativeMethods.phoneShutdown((uint)this.handle.ToInt32());
+                NativeMethods.phoneShutdown(this);
                 handle = IntPtr.Zero;
             }
             return true;
@@ -233,11 +230,8 @@ namespace JulMar.Atapi.Interop
         /// <summary>
         /// Fixed according to http://msdn.microsoft.com/en-us/library/system.runtime.interopservices.safehandle.isinvalid(v=vs.80).aspx
         /// </summary>
-        public override bool IsInvalid
-        {
-            get { return IsClosed || handle == IntPtr.Zero; }
-        }
-    }
+        public override bool IsInvalid => IsClosed || handle == IntPtr.Zero;
+	}
 
     /// <summary>
     /// Delegate used to describe the PHONECALLBACK and LINECALLBACK used by TAPI32.DLL to notify the application of events
@@ -252,308 +246,313 @@ namespace JulMar.Atapi.Interop
     /// This class holds all the API and structures/constants used by TAPI 2.x
     /// </summary>
     internal static class NativeMethods
-    {
-        #region TAPI Api definitions
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+	{
+		private const string _tapi = "tapi32.dll";
+
+		#region TAPI Api definitions
+#pragma warning disable IDE1006 // Naming Styles
+
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineAccept(HTCALL hCall, byte[] UserUserInfo, int dwSize);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineAddToConference(HTCALL hConfCall, HTCALL hConsultCall);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineAnswer(HTCALL hCall, byte[] UserUserInfo, int dwSize);
 
-        [DllImport("tapi32.dll", EntryPoint = "lineBlindTransferW", CharSet = CharSet.Auto)]
-        internal static extern int lineBlindTransfer(HTCALL hCall, string destAddress, int countryCode);
+        [DllImport(_tapi, EntryPoint = "lineBlindTransferW", CharSet = CharSet.Auto)]
+        internal static extern int lineBlindTransfer(HTCALL hCall, [MarshalAs(UnmanagedType.LPWStr)] string destAddress, int countryCode);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
-        internal static extern int lineClose(uint hLine);
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
+        internal static extern int lineClose(HTLINE hLine);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineCompleteCall(HTCALL hCall, IntPtr lpCompletionId, int mode, int messageId);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
-        internal static extern int lineCompleteTransfer(HTCALL hCall, HTCALL htConsult, out uint htConfCall, int dwTransferMode);
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
+        internal static extern int lineCompleteTransfer(HTCALL hCall, HTCALL htConsult, out IntPtr htConfCall, int dwTransferMode);
 
-        [DllImport("tapi32.dll", EntryPoint = "lineConfigDialogW", CharSet = CharSet.Auto)]
-        internal static extern int lineConfigDialog(int dwDeviceID, IntPtr hwndOwner, string lpszDeviceClass);
+        [DllImport(_tapi, EntryPoint = "lineConfigDialogW", CharSet = CharSet.Auto)]
+        internal static extern int lineConfigDialog(int dwDeviceID, IntPtr hwndOwner, [MarshalAs(UnmanagedType.LPWStr)] string lpszDeviceClass);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
-        internal static extern int lineDeallocateCall(uint hLine);
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
+        internal static extern int lineDeallocateCall(HTCALL hCall);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineDevSpecific(HTLINE hLine, int dwAddressID, uint hCall, IntPtr lpParams, int dwSize);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineDevSpecificFeature(HTLINE hLine, int dwFeature, IntPtr lpParams, int dwSize);
 
-        [DllImport("tapi32.dll", EntryPoint = "lineDialW", CharSet = CharSet.Auto)]
-        internal static extern int lineDial(HTCALL hCall, string destAddress, int countryCode);
+        [DllImport(_tapi, EntryPoint = "lineDialW", CharSet = CharSet.Auto)]
+        internal static extern int lineDial(HTCALL hCall, [MarshalAs(UnmanagedType.LPWStr)] string destAddress, int countryCode);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineDrop(HTCALL hCall, byte[] UserInfo, int dwSize);
 
-        [DllImport("Tapi32.dll", EntryPoint="lineForwardW", CharSet = CharSet.Auto)]
-        internal static extern int lineForward(HTLINE hLine, int bAllAddresses, int dwAddressID, IntPtr lpForwardList, int dwNumRingsNoAnswer, out uint lphConsultCall, IntPtr lpCallParams);
+        [DllImport(_tapi, EntryPoint="lineForwardW", CharSet = CharSet.Auto)]
+        internal static extern int lineForward(HTLINE hLine, int bAllAddresses, int dwAddressID, IntPtr lpForwardList, int dwNumRingsNoAnswer, out IntPtr lphConsultCall, IntPtr lpCallParams);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
-        internal static extern int lineGatherDigits(HTCALL hCall, int dwDigitModes, out StringBuilder buffer, int numDigits, string termDigits, int firstDigitTimeout, int interDigitTimeout);
+        [DllImport(_tapi, EntryPoint = "lineGatherDigitsW", CharSet = CharSet.Auto)]
+        internal static extern int lineGatherDigits(HTCALL hCall, int dwDigitModes, [MarshalAs(UnmanagedType.LPWStr)] out StringBuilder buffer, int numDigits, [MarshalAs(UnmanagedType.LPWStr)] string termDigits, int firstDigitTimeout, int interDigitTimeout);
 
-        [DllImport("Tapi32.dll", EntryPoint="lineGatherDigitsW", CharSet = CharSet.Auto)]
-        internal static extern int lineCancelGatherDigits(HTCALL hCall, int dwDigitModes, string buffer, int numDigits, string termDigits, int firstDigitTimeout, int interDigitTimeout);
+        [DllImport(_tapi, EntryPoint="lineGatherDigitsW", CharSet = CharSet.Auto)]
+        internal static extern int lineCancelGatherDigits(HTCALL hCall, int dwDigitModes, [MarshalAs(UnmanagedType.LPWStr)] string buffer, int numDigits, [MarshalAs(UnmanagedType.LPWStr)] string termDigits, int firstDigitTimeout, int interDigitTimeout);
 
-        [DllImport("Tapi32.dll", EntryPoint="lineGenerateDigitsW", CharSet = CharSet.Auto)]
-        internal static extern int lineGenerateDigits(HTCALL hCall, int dwDigitMode, string buffer, int dwDuration);
+        [DllImport(_tapi, EntryPoint="lineGenerateDigitsW", CharSet = CharSet.Auto)]
+        internal static extern int lineGenerateDigits(HTCALL hCall, int dwDigitMode, [MarshalAs(UnmanagedType.LPWStr)] string buffer, int dwDuration);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineGenerateTone(HTCALL hCall, int dwToneMode, int dwDuration, int dwNumTones, LINEGENERATETONE[] arrTones);
 
-        [DllImport("Tapi32.dll", EntryPoint = "lineGetAddressCapsW", CharSet = CharSet.Auto)]
-        internal static extern int lineGetAddressCaps(HTLINEAPP hLineApp, int dwDeviceID, int dwAddressID, int dwAPIVersion, int dwExtVersion, IntPtr lpAddressCaps);
+        [DllImport(_tapi, EntryPoint = "lineGetAddressCapsW", CharSet = CharSet.Auto)]
+        internal static extern int lineGetAddressCaps(HTLINEAPP hLineApp, int dwDeviceID, int dwAddressID, int dwApiVersion, int dwExtVersion, IntPtr lpAddressCaps);
 
-        [DllImport("Tapi32.dll", EntryPoint = "lineGetAddressStatusW", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "lineGetAddressStatusW", CharSet = CharSet.Auto)]
         internal static extern int lineGetAddressStatus(HTLINE hLine, int dwAddressID, IntPtr lpAddressStatus);
 
-        [DllImport("Tapi32.dll", EntryPoint = "lineGetCallInfoW", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "lineGetCallInfoW", CharSet = CharSet.Auto)]
         internal static extern int lineGetCallInfo(HTCALL hCall, IntPtr lpCallInfo);
 
-        [DllImport("Tapi32.dll", EntryPoint = "lineGetCallStatus", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "lineGetCallStatus", CharSet = CharSet.Auto)]
         internal static extern int lineGetCallStatus(HTCALL hCall, IntPtr lpCallStatus);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineGetConfRelatedCalls(HTCALL hCall, IntPtr lpCallList);
 
-        [DllImport("Tapi32.dll", EntryPoint = "lineGetCountryW", CharSet = CharSet.Auto)]
-        internal static extern int lineGetCountry(int dwCountryID, int dwAPIVersion, IntPtr lpLineCountryList);
+        [DllImport(_tapi, EntryPoint = "lineGetCountryW", CharSet = CharSet.Auto)]
+        internal static extern int lineGetCountry(int dwCountryID, int dwApiVersion, IntPtr lpLineCountryList);
 
-        [DllImport("Tapi32.dll", EntryPoint = "lineGetDevCapsW", CharSet = CharSet.Auto)]
-        internal static extern int lineGetDevCaps(HTLINEAPP hLineApp, int dwDeviceID, int dwAPIVersion, int dwExtVersion, IntPtr lpLineDevCaps);
+        [DllImport(_tapi, EntryPoint = "lineGetDevCapsW", CharSet = CharSet.Auto)]
+        internal static extern int lineGetDevCaps(HTLINEAPP hLineApp, int dwDeviceID, int dwApiVersion, int dwExtVersion, IntPtr lpLineDevCaps);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
-        internal static extern int lineGetDevConfig(int dwDeviceID, IntPtr deviceConfig, string DeviceClass);
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
+        internal static extern int lineGetDevConfig(int dwDeviceID, IntPtr deviceConfig, [MarshalAs(UnmanagedType.LPWStr)] string deviceClass);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
-        internal static extern int lineGetID(HTLINE hLine, int dwAddressID, HTCALL hCall, int dwSelect, IntPtr deviceID, string deviceClass);
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
+        internal static extern int lineGetID(HTLINE hLine, int dwAddressID, HTCALL hCall, int dwSelect, IntPtr deviceID, [MarshalAs(UnmanagedType.LPWStr)] string deviceClass);
 
-        [DllImport("Tapi32.dll", EntryPoint = "lineGetLineDevStatusW", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "lineGetLineDevStatusW", CharSet = CharSet.Auto)]
         internal static extern int lineGetLineDevStatus(HTLINE htLine, IntPtr lpLineStatus);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineGetMessage(HTLINEAPP hLineApp, ref LINEMESSAGE lpMessage, int dwTimeout);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineGetNewCalls(HTLINE hLine, int dwAddressID, int dwSelect, IntPtr lpCallList);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineGetNumRings(HTLINE hLine, int dwAddressID, out int lpdwNumRings);
 
-        [DllImport("tapi32.dll", EntryPoint = "lineGetProviderListW", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "lineGetProviderListW", CharSet = CharSet.Auto)]
         internal static extern int lineGetProviderList(int dwAPIVersion, IntPtr lpProviderList);
 
-        [DllImport("Tapi32.dll", EntryPoint = "lineGetTranslateCapsW", CharSet = CharSet.Auto)]
-        internal static extern int lineGetTranslateCaps(HTLINEAPP hLineApp, int dwAPIVersion, IntPtr lpTranslateCaps);
+        [DllImport(_tapi, EntryPoint = "lineGetTranslateCapsW", CharSet = CharSet.Auto)]
+        internal static extern int lineGetTranslateCaps(HTLINEAPP hLineApp, int dwApiVersion, IntPtr lpTranslateCaps);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineHold(HTCALL hCall);
 
-        [DllImport("Tapi32.dll", EntryPoint = "lineInitializeExW", CharSet = CharSet.Auto)]
-        internal static extern int lineInitializeEx(out uint hLineApp, IntPtr hAppHandle, TapiEventCallback CalllBack, string friendlyAppName, out int numDevices, ref int apiVersion, ref LINEINITIALIZEEXPARAMS lineExParms);
+        [DllImport(_tapi, EntryPoint = "lineInitializeExW", CharSet = CharSet.Auto)]
+        internal static extern int lineInitializeEx(out IntPtr hLineApp, IntPtr hAppHandle, TapiEventCallback CalllBack, [MarshalAs(UnmanagedType.LPWStr)] string friendlyAppName, out int numDevices, ref int apiVersion, ref LINEINITIALIZEEXPARAMS lineExParms);
 
-        [DllImport("Tapi32.dll", EntryPoint = "lineMakeCallW", CharSet = CharSet.Auto)]
-        internal static extern int lineMakeCall(HTLINE hLine, out uint hCall, string DestAddress, int CountryCode, IntPtr lpCallParams);
+        [DllImport(_tapi, EntryPoint = "lineMakeCallW", CharSet = CharSet.Auto)]
+        internal static extern int lineMakeCall(HTLINE hLine, out IntPtr hCall, [MarshalAs(UnmanagedType.LPWStr)] string destAddress, int countryCode, IntPtr lpCallParams);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
-        internal static extern int lineNegotiateAPIVersion(HTLINEAPP hLineApp, int dwDeviceID, int dwAPILowVersion, int dwAPIHighVersion, out int lpdwAPIVersion, out LINEEXTENSIONID lpExtensionID);
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
+        internal static extern int lineNegotiateAPIVersion(HTLINEAPP hLineApp, int dwDeviceID, int dwApiLowVersion, int dwApiHighVersion, out int lpdwApiVersion, out LINEEXTENSIONID lpExtensionID);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
-        internal static extern int lineNegotiateExtVersion(HTLINEAPP hLineApp, int dwDeviceID, int dwAPIVersion, int dwExtLowVersion, int dwExtHighVersion, out int dwExtVersion);
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
+        internal static extern int lineNegotiateExtVersion(HTLINEAPP hLineApp, int dwDeviceID, int dwApiVersion, int dwExtLowVersion, int dwExtHighVersion, out int dwExtVersion);
 
-        [DllImport("Tapi32.dll", EntryPoint = "lineOpenW", CharSet = CharSet.Auto)]
-        internal static extern int lineOpen(HTLINEAPP hLineApp, int dwDeviceID, out uint hLine, int dwAPIVersion, int dwExtVersion, IntPtr dwCallbackInstance, int dwPrivileges, int dwMediaModes, ref LINECALLPARAMS lpCallParams);
+        [DllImport(_tapi, EntryPoint = "lineOpenW", CharSet = CharSet.Auto)]
+        internal static extern int lineOpen(HTLINEAPP hLineApp, int dwDeviceID, out IntPtr hLine, int dwApiVersion, int dwExtVersion, IntPtr dwCallbackInstance, int dwPrivileges, int dwMediaModes, ref LINECALLPARAMS lpCallParams);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineMonitorDigits(HTCALL hCall, int digitModes);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineMonitorMedia(HTCALL hCall, int mediaModes);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineMonitorTones(HTCALL hCall, LINEMONITORTONE[] tones, int numEntries);
 
-        [DllImport("Tapi32.dll", EntryPoint = "lineParkW", CharSet = CharSet.Auto)]
-        internal static extern int linePark(HTCALL hCall, int parkMode, string address, IntPtr ndAddress);
+        [DllImport(_tapi, EntryPoint = "lineParkW", CharSet = CharSet.Auto)]
+        internal static extern int linePark(HTCALL hCall, int parkMode, [MarshalAs(UnmanagedType.LPWStr)] string address, IntPtr ndAddress);
 
-        [DllImport("Tapi32.dll", EntryPoint = "linePickupW", CharSet = CharSet.Auto)]
-        internal static extern int linePickup(HTLINE hLine, int addressId, out uint hCall, string destAddress, string groupId);
+        [DllImport(_tapi, EntryPoint = "linePickupW", CharSet = CharSet.Auto)]
+        internal static extern int linePickup(HTLINE hLine, int addressId, out IntPtr hCall, [MarshalAs(UnmanagedType.LPWStr)] string destAddress, string groupId);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
-        internal static extern int linePrepareAddToConference(HTCALL hConfCall, out uint hConsultCall, IntPtr lpCallParams);
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
+        internal static extern int linePrepareAddToConference(HTCALL hConfCall, out IntPtr hConsultCall, IntPtr lpCallParams);
 
-        [DllImport("Tapi32.dll", EntryPoint = "lineRedirectW", CharSet = CharSet.Auto)]
-        internal static extern int lineRedirect(HTCALL hCall, string address, int countryCode);
+        [DllImport(_tapi, EntryPoint = "lineRedirectW", CharSet = CharSet.Auto)]
+        internal static extern int lineRedirect(HTCALL hCall, [MarshalAs(UnmanagedType.LPWStr)] string address, int countryCode);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineReleaseUserUserInfo(HTCALL hCall);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineRemoveFromConference(HTCALL hConfCall, HTCALL hConsultCall);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineSecureCall(HTCALL hCall);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Ansi)]
-        internal static extern int lineSendUserUserInfo(HTCALL hCall, string data, int dwLength);
+        [DllImport(_tapi, CharSet = CharSet.Ansi)]
+        internal static extern int lineSendUserUserInfo(HTCALL hCall, [MarshalAs(UnmanagedType.LPStr)] string data, int dwLength);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineSetAppSpecific(HTCALL hCall, int appData);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineSetCallData(HTCALL hCall, byte[] pBuffer, int dwLength);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineSetCallParams(HTCALL hCall, int dwBearerMode, int dwMinRate, int dwMaxRate, LINEDIALPARAMS ldp);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineSetCallPrivilege(HTCALL hCall, int privilege);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineSetCallTreatment(HTCALL hCall, int dwCallTreatment);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineSetCurrentLocation(HTLINEAPP hLineApp, int currLocation);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineSetDevConfig(int deviceId, IntPtr devConfig, int dwSize, string deviceConfig);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineSetLineDevStatus(HTLINE hLine, int dwStatus, int onOff);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineSetMediaMode(HTCALL hCall, int mediaMode);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineSetNumRings(HTLINE hLine, int dwAddressID, int lpdwNumRings);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineSetStatusMessages(HTLINE hLine, int dwLineStates, int dwAddressStates);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
-        internal static extern int lineSetupConference(HTCALL hCall, HTLINE hLine, out uint htConferenceCall, out uint htConsultCall, int dwNumParties, IntPtr lpCallParams);
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
+        internal static extern int lineSetupConference(HTCALL hCall, HTLINE hLine, out IntPtr htConferenceCall, out IntPtr htConsultCall, int dwNumParties, IntPtr lpCallParams);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
-        internal static extern int lineSetupTransfer(HTCALL hCall, out uint htConsultCall, IntPtr lpCallParams);
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
+        internal static extern int lineSetupTransfer(HTCALL hCall, out IntPtr htConsultCall, IntPtr lpCallParams);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto), ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success)]
-        internal static extern int lineShutdown(uint hTapi);
+        [DllImport(_tapi, CharSet = CharSet.Auto), ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success)]
+        internal static extern int lineShutdown(HTLINEAPP hLine);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineSwapHold(HTCALL hCall, HTCALL otherCall);
 
-        [DllImport("Tapi32.dll", EntryPoint = "lineTranslateAddressW", CharSet = CharSet.Auto)]
-        internal static extern int lineTranslateAddress(HTLINEAPP hLineApp, int dwDeviceID, int dwAPIVersion, string sAddressIn, int dwCard, int dwTranslateOptions, IntPtr lpTranslateOutput);
+        [DllImport(_tapi, EntryPoint = "lineTranslateAddressW", CharSet = CharSet.Auto)]
+        internal static extern int lineTranslateAddress(HTLINEAPP hLineApp, int dwDeviceID, int dwAPIVersion, [MarshalAs(UnmanagedType.LPWStr)] string sAddressIn, int dwCard, int dwTranslateOptions, IntPtr lpTranslateOutput);
 
-        [DllImport("tapi32.dll", EntryPoint = "lineTranslateDialogW", CharSet = CharSet.Auto)]
-        internal static extern int lineTranslateDialog(HTLINEAPP hLineApp, int dwDeviceID, int dwAPIVersion, SafeHandle hwndOwner, string lpszAddressIn);
+        [DllImport(_tapi, EntryPoint = "lineTranslateDialogW", CharSet = CharSet.Auto)]
+        internal static extern int lineTranslateDialog(HTLINEAPP hLineApp, int dwDeviceID, int dwAPIVersion, IntPtr hwndOwner, string lpszAddressIn);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineUncompleteCall(HTLINE hLine, int completionId);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int lineUnhold(HTCALL hCall);
 
-        [DllImport("tapi32.dll", EntryPoint = "lineUnparkW", CharSet = CharSet.Auto)]
-        internal static extern int lineUnpark(HTLINE hLine, int addressID, out uint hCall, string parkAddress);
+        [DllImport(_tapi, EntryPoint = "lineUnparkW", CharSet = CharSet.Auto)]
+        internal static extern int lineUnpark(HTLINE hLine, int addressID, out IntPtr hCall, [MarshalAs(UnmanagedType.LPWStr)] string parkAddress);
 
-        [DllImport("tapi32.dll", EntryPoint = "phoneClose", CharSet = CharSet.Auto)]
-        internal static extern int phoneClose(uint hPhone);
+        [DllImport(_tapi, EntryPoint = "phoneClose", CharSet = CharSet.Auto)]
+        internal static extern int phoneClose(HTPHONE hPhone);
 
-        [DllImport("tapi32.dll", EntryPoint = "phoneConfigDialogW", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneConfigDialogW", CharSet = CharSet.Auto)]
         internal static extern int phoneConfigDialog(int dwDeviceID, IntPtr hwndOwner, string deviceClass);
 
-        [DllImport("tapi32.dll", EntryPoint = "phoneDevSpecific", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneDevSpecific", CharSet = CharSet.Auto)]
         internal static extern int phoneDevSpecific(HTPHONE hPhone, IntPtr lpParams, int dwSize);
 
-        [DllImport("tapi32.dll", EntryPoint = "phoneGetButtonInfoW", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneGetButtonInfoW", CharSet = CharSet.Auto)]
         internal static extern int phoneGetButtonInfo(HTPHONE hPhone, int dwButtonLampID, IntPtr lpButtonInfo); 
 
-        [DllImport("tapi32.dll", EntryPoint = "phoneGetData", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneGetData", CharSet = CharSet.Auto)]
         internal static extern int phoneGetData(HTPHONE hPhone, int dwDataID, IntPtr lpData, int dwSize);
 
-        [DllImport("Tapi32.dll", EntryPoint = "phoneGetDevCapsW", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneGetDevCapsW", CharSet = CharSet.Auto)]
         internal static extern int phoneGetDevCaps(HTPHONEAPP hPhoneApp, int dwDeviceID, int dwAPIVersion, int dwExtVersion, IntPtr lpPhoneCaps);
 
-        [DllImport("Tapi32.dll", EntryPoint = "phoneGetDisplay", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneGetDisplay", CharSet = CharSet.Auto)]
         internal static extern int phoneGetDisplay(HTPHONE hPhone, IntPtr lpDisplay);
 
-        [DllImport("Tapi32.dll", EntryPoint = "phoneGetGain", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneGetGain", CharSet = CharSet.Auto)]
         internal static extern int phoneGetGain(HTPHONE hPhone, int dwHookSwitchDev, ref int lpdwGain);
 
-        [DllImport("Tapi32.dll", EntryPoint = "phoneGetHookSwitch", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneGetHookSwitch", CharSet = CharSet.Auto)]
         internal static extern int phoneGetGain(HTPHONE hPhone, ref int lpdwHookSwitchDevs);
 
-        [DllImport("Tapi32.dll", EntryPoint = "phoneGetHookIDW", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneGetHookIDW", CharSet = CharSet.Auto)]
         internal static extern int phoneGetID(HTPHONE hPhone, IntPtr lpDeviceID, string lpszDeviceClass);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int phoneGetLamp(HTPHONE hPhone, int dwButtonLampID, out int lpdwLampMode);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int phoneGetMessage(HTPHONEAPP hPhoneApp, ref LINEMESSAGE lpMessage, int dwTimeout);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int phoneGetRing(HTPHONE hPhone, ref int lpdwRingMode, ref int lpdwVolume);
 
-        [DllImport("Tapi32.dll", EntryPoint="phoneGetStatusW", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint="phoneGetStatusW", CharSet = CharSet.Auto)]
         internal static extern int phoneGetStatus(HTPHONE hPhone, IntPtr lpPhoneStatus);
 
-        [DllImport("Tapi32.dll", EntryPoint="phoneGetStatusMessages", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint="phoneGetStatusMessages", CharSet = CharSet.Auto)]
         internal static extern int phoneGetStatusMessages(HTPHONE hPhone, ref int lpdwPhoneStates, ref int lpdwButtonModes, ref int lpdwButtonStates);
 
-        [DllImport("Tapi32.dll", EntryPoint="phoneGetVolume", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint="phoneGetVolume", CharSet = CharSet.Auto)]
         internal static extern int phoneGetVolume(HTPHONE hPhone, int dwHookSwitchDev, ref int lpdwVolume);
 
-        [DllImport("Tapi32.dll", EntryPoint = "phoneInitializeExW", CharSet = CharSet.Auto)]
-        internal static extern int phoneInitializeEx(out uint hPhoneApp, uint hAppHandle, TapiEventCallback CalllBack, string friendlyAppName, out int numDevices, ref int apiVersion, ref PHONEINITIALIZEEXPARAMS phoneExParms);
+        [DllImport(_tapi, EntryPoint = "phoneInitializeExW", CharSet = CharSet.Auto)]
+        internal static extern int phoneInitializeEx(out IntPtr hPhoneApp, IntPtr hAppHandle, TapiEventCallback CalllBack, string friendlyAppName, out int numDevices, ref int apiVersion, ref PHONEINITIALIZEEXPARAMS phoneExParms);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int phoneNegotiateAPIVersion(HTPHONEAPP hPhoneApp, int dwDeviceID, int dwAPILowVersion, int dwAPIHighVersion, out int lpdwAPIVersion, out PHONEEXTENSIONID lpExtensionID);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
         internal static extern int phoneNegotiateExtVersion(HTPHONEAPP hPhoneApp, int dwDeviceID, int dwAPIVersion, int dwExtLowVersion, int dwExtHighVersion, out int dwExtVersion);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto)]
-        internal static extern int phoneOpen(HTPHONEAPP hPhoneApp, int dwDeviceID, out uint hPhone, int dwAPIVersion, int dwExtVersion, IntPtr dwCallbackInstance, int dwPrivileges);
+        [DllImport(_tapi, CharSet = CharSet.Auto)]
+        internal static extern int phoneOpen(HTPHONEAPP hPhoneApp, int dwDeviceID, out IntPtr hPhone, int dwAPIVersion, int dwExtVersion, IntPtr dwCallbackInstance, int dwPrivileges);
 
-        [DllImport("Tapi32.dll", EntryPoint = "phoneSetButtonInfoW", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneSetButtonInfoW", CharSet = CharSet.Auto)]
         internal static extern int phoneSetButtonInfo(HTPHONE hPhone, int dwButtonLampID, IntPtr lpButtonInfo);
 
-        [DllImport("Tapi32.dll", EntryPoint = "phoneSetData", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneSetData", CharSet = CharSet.Auto)]
         internal static extern int phoneSetData(HTPHONE hPhone, int dwDataID, IntPtr lpData, int dwSize);
 
-        [DllImport("Tapi32.dll", EntryPoint = "phoneSetDisplay", CharSet = CharSet.Ansi)]
-        internal static extern int phoneSetDisplay(HTPHONE hPhone, int dwRow, int dwColumn, string lpsDisplay, int dwSize);
+        [DllImport(_tapi, EntryPoint = "phoneSetDisplay", CharSet = CharSet.Ansi)]
+        internal static extern int phoneSetDisplay(HTPHONE hPhone, int dwRow, int dwColumn, [MarshalAs(UnmanagedType.LPStr)] string lpsDisplay, int dwSize);
 
-        [DllImport("Tapi32.dll", EntryPoint = "phoneSetGain", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneSetGain", CharSet = CharSet.Auto)]
         internal static extern int phoneSetGain(HTPHONE hPhone, int dwHookSwitchDev, int dwGain);
 
-        [DllImport("Tapi32.dll", EntryPoint = "phoneSetHookSwitch", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneSetHookSwitch", CharSet = CharSet.Auto)]
         internal static extern int phoneSetHookSwitch(HTPHONE hPhone, int dwHookSwitchDev, int dwHookSwitchMode);
 
-        [DllImport("Tapi32.dll", EntryPoint = "phoneSetLamp", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneSetLamp", CharSet = CharSet.Auto)]
         internal static extern int phoneSetLamp(HTPHONE hPhone, int dwButtonLampID, int dwLampMode);
 
-        [DllImport("Tapi32.dll", EntryPoint = "phoneSetRing", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneSetRing", CharSet = CharSet.Auto)]
         internal static extern int phoneSetRing(HTPHONE hPhone, int dwRingMode, int dwVolume);
 
-        [DllImport("Tapi32.dll", EntryPoint = "phoneSetStatusMessages", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneSetStatusMessages", CharSet = CharSet.Auto)]
         internal static extern int phoneSetStatusMessages(HTPHONE hPhone, int dwPhoneStates, int dwButtonModes, int dwButtonStates);
 
-        [DllImport("Tapi32.dll", EntryPoint = "phoneSetVolume", CharSet = CharSet.Auto)]
+        [DllImport(_tapi, EntryPoint = "phoneSetVolume", CharSet = CharSet.Auto)]
         internal static extern int phoneSetVolume(HTPHONE hPhone, int dwHookSwitchDev, int dwVolume);
 
-        [DllImport("Tapi32.dll", CharSet = CharSet.Auto), ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success)]
-        internal static extern int phoneShutdown(uint hTapi);
+        [DllImport(_tapi, CharSet = CharSet.Auto), ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success)]
+        internal static extern int phoneShutdown(HTPHONEAPP htPhoneApp);
 
+#pragma warning restore IDE1006 // Naming Styles
         #endregion
 
         #region Constants

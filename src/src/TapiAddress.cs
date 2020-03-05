@@ -760,7 +760,7 @@ namespace JulMar.Atapi
             try
             {
                 lpCp = MakeCallParams.ProcessCallParams(_addressId, param, 0);
-                uint hCall;
+                IntPtr hCall;
 
                 int rc = NativeMethods.lineForward(_lineOwner.Handle, 0, _addressId, fwdList, numRingsNoAnswer, out hCall, lpCp);
                 if (rc < 0)
@@ -775,7 +775,7 @@ namespace JulMar.Atapi
                     if (req.Result < 0)
                         throw new TapiException("lineForward failed", req.Result);
 
-                    if (hCall != 0)
+                    if (hCall != IntPtr.Zero)
                     {
                         var call = new TapiCall(this, hCall);
                         AddCall(call);
@@ -799,8 +799,7 @@ namespace JulMar.Atapi
         /// </summary>
         public void CancelForward()
         {
-            uint hCall;
-            int rc = NativeMethods.lineForward(_lineOwner.Handle, 0, _addressId, IntPtr.Zero, 0, out hCall, IntPtr.Zero);
+			int rc = NativeMethods.lineForward(_lineOwner.Handle, 0, _addressId, IntPtr.Zero, 0, out var hCall, IntPtr.Zero);
             if (rc < 0)
                 throw new TapiException("lineForward failed", rc);
             
@@ -812,8 +811,8 @@ namespace JulMar.Atapi
             {
                 if (req.Result < 0)
                     throw new TapiException("lineForward failed", req.Result);
-                if (hCall != 0)
-                    NativeMethods.lineDeallocateCall(hCall);
+                if (hCall != IntPtr.Zero)
+                    NativeMethods.lineDeallocateCall(new HTCALL(hCall, true));
             }
         }
         #endregion
@@ -845,8 +844,7 @@ namespace JulMar.Atapi
             try
             {
                 lpCp = MakeCallParams.ProcessCallParams(_addressId, param, 0);
-                uint hCall;
-                int rc = NativeMethods.lineMakeCall(_lineOwner.Handle, out hCall, address, countryCode, lpCp);
+                int rc = NativeMethods.lineMakeCall(_lineOwner.Handle, out var hCall, address, countryCode, lpCp);
                 if (rc < 0)
                 {
                     throw new TapiException("lineMakeCall failed", rc);
@@ -885,8 +883,7 @@ namespace JulMar.Atapi
         /// <returns>New <see cref="TapiCall"/> object.</returns>
         public ITapiCall Pickup(string alertingAddress, string groupId)
         {
-            uint hCall;
-            int rc = NativeMethods.linePickup(_lineOwner.Handle, _addressId, out hCall, alertingAddress, groupId);
+            int rc = NativeMethods.linePickup(_lineOwner.Handle, _addressId, out var hCall, alertingAddress, groupId);
             if (rc < 0)
                 throw new TapiException("linePickup failed", rc);
 
@@ -923,8 +920,7 @@ namespace JulMar.Atapi
                 if (mcp != null && !String.IsNullOrEmpty(mcp.TargetAddress))
                     callFlags |= NativeMethods.LINECALLPARAMFLAGS_NOHOLDCONFERENCE;
                 lpCp = MakeCallParams.ProcessCallParams(Id, mcp, callFlags);
-                uint hCall, hConfCall;
-                int rc = NativeMethods.lineSetupConference(new HTCALL(), _lineOwner.Handle, out hConfCall, out hCall, conferenceCount, lpCp);
+				int rc = NativeMethods.lineSetupConference(new HTCALL(), _lineOwner.Handle, out var hConfCall, out var hCall, conferenceCount, lpCp);
                 if (rc < 0)
                 {
                     throw new TapiException("lineSetupConference failed", rc);
@@ -939,7 +935,7 @@ namespace JulMar.Atapi
                     if (req.Result < 0)
                         throw new TapiException("lineSetupConference failed", req.Result);
 
-                    if (hCall != 0)
+                    if (hCall != IntPtr.Zero)
                     {
                         consultCall = new TapiCall(this, hCall);
                         AddCall(consultCall);
@@ -970,8 +966,7 @@ namespace JulMar.Atapi
         /// <returns>New <see cref="TapiCall"/> object.</returns>
         public ITapiCall Unpark(string parkedAddress)
         {
-            uint hCall;
-            int rc = NativeMethods.lineUnpark(_lineOwner.Handle, _addressId, out hCall, parkedAddress);
+            int rc = NativeMethods.lineUnpark(_lineOwner.Handle, _addressId, out var hCall, parkedAddress);
             if (rc < 0)
                 throw new TapiException("lineUnpark failed", rc);
 
@@ -1095,7 +1090,7 @@ namespace JulMar.Atapi
                     for (int i = 0; i < lcl.dwCallsNumEntries; i++)
                     {
                         // Assume calls are 4 bytes in size.
-                        var hCall = (uint) BitConverter.ToInt32(rawBuffer, lcl.dwCallsOffset + (i * 4));
+                        var hCall = new IntPtr(BitConverter.ToUInt32(rawBuffer, lcl.dwCallsOffset + i * 4));
                         AddCall(new TapiCall(this, hCall));
                     }
                 }

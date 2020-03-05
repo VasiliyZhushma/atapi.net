@@ -160,10 +160,8 @@ namespace JulMar.Atapi
             parms.dwCompletionKey = 0;
             parms.hEvent = IntPtr.Zero;
 
-            int numDevices; uint hTapi;
-
-            int rc = NativeMethods.lineInitializeEx(out hTapi, IntPtr.Zero, null, _appName,
-                    out numDevices, ref _lineVersion, ref parms);
+			int rc = NativeMethods.lineInitializeEx(out var hTapi, IntPtr.Zero, null, _appName,
+                    out var numDevices, ref _lineVersion, ref parms);
             if (rc == NativeMethods.LINEERR_OK)
             {
                 _hTapiLine = new HTLINEAPP(hTapi, true);
@@ -197,11 +195,9 @@ namespace JulMar.Atapi
             parms.dwOptions = NativeMethods.PHONEINITIALIZEEXOPTION_USEEVENT;
             parms.dwCompletionKey = 0;
             parms.hEvent = IntPtr.Zero;
-
-            int numDevices; uint hTapi;
-
-            int rc = NativeMethods.phoneInitializeEx(out hTapi, 0, null, _appName,
-                    out numDevices, ref _phoneVersion, ref parms);
+            
+            int rc = NativeMethods.phoneInitializeEx(out var hTapi, IntPtr.Zero, null, _appName,
+                    out var numDevices, ref _phoneVersion, ref parms);
             if (rc == NativeMethods.PHONEERR_OK)
             {
                 _hTapiPhone = new HTPHONEAPP(hTapi, true);
@@ -472,11 +468,13 @@ namespace JulMar.Atapi
 
         private void ProcessTapiMessage(LINEMESSAGE msg)
         {
-            switch (msg.dwMessageID)
+			var htCall = new IntPtr(msg.hDevice);
+            
+			switch (msg.dwMessageID)
             {
                 case TapiEvent.LINE_CALLSTATE:
                     {
-                        TapiCall call = TapiCall.FindCallByHandle(msg.hDevice);
+						TapiCall call = TapiCall.FindCallByHandle(htCall);
                         if (call != null)
                             call.OnCallStateChange(msg.dwParam1.ToInt32(), msg.dwParam2, (MediaModes) msg.dwParam3.ToInt32());
                         else
@@ -491,62 +489,55 @@ namespace JulMar.Atapi
                     break;
                 case TapiEvent.LINE_CALLINFO:
                     {
-                        TapiCall call = TapiCall.FindCallByHandle(msg.hDevice);
-                        if (call != null)
-                            call.OnCallInfoChange(msg.dwParam1.ToInt32());
-                    }
+                        TapiCall call = TapiCall.FindCallByHandle(htCall);
+						call?.OnCallInfoChange(msg.dwParam1.ToInt32());
+					}
                     break;
                 case TapiEvent.LINE_GATHERDIGITS:
                     {
-                        TapiCall call = TapiCall.FindCallByHandle(msg.hDevice);
-                        if (call != null)
-                            call.OnGatherDigitsComplete(msg.dwParam1.ToInt32());
-                    }
+                        TapiCall call = TapiCall.FindCallByHandle(htCall);
+						call?.OnGatherDigitsComplete(msg.dwParam1.ToInt32());
+					}
                     break;
 
                 case TapiEvent.LINE_GENERATE:
                     {
-                        TapiCall call = TapiCall.FindCallByHandle(msg.hDevice);
-                        if (call != null)
-                            call.OnGenerateDigitsOrToneComplete(msg.dwParam1.ToInt32());
-                    }
+                        TapiCall call = TapiCall.FindCallByHandle(htCall);
+						call?.OnGenerateDigitsOrToneComplete(msg.dwParam1.ToInt32());
+					}
                     break;
 
                 case TapiEvent.LINE_MONITORDIGITS:
                     {
-                        TapiCall call = TapiCall.FindCallByHandle(msg.hDevice);
-                        if (call != null)
-                            call.OnDigitDetected(msg.dwParam1.ToInt32(), msg.dwParam2.ToInt32());
-                    }
+                        TapiCall call = TapiCall.FindCallByHandle(htCall);
+						call?.OnDigitDetected(msg.dwParam1.ToInt32(), msg.dwParam2.ToInt32());
+					}
                     break;
 
                 case TapiEvent.LINE_MONITORMEDIA:
                     {
-                        TapiCall call = TapiCall.FindCallByHandle(msg.hDevice);
-                        if (call != null)
-                            call.OnMediaModeDetected((MediaModes)msg.dwParam1.ToInt32());
-                    }
+                        TapiCall call = TapiCall.FindCallByHandle(htCall);
+						call?.OnMediaModeDetected((MediaModes)msg.dwParam1.ToInt32());
+					}
                     break;
 
                 case TapiEvent.LINE_MONITORTONE:
                     {
-                        TapiCall call = TapiCall.FindCallByHandle(msg.hDevice);
-                        if (call != null)
-                            call.OnToneDetected(msg.dwParam1.ToInt32());
-                    }
+                        TapiCall call = TapiCall.FindCallByHandle(htCall);
+						call?.OnToneDetected(msg.dwParam1.ToInt32());
+					}
                     break;
 
                 case TapiEvent.LINE_LINEDEVSTATE:
                     if (msg.dwParam1.ToInt32() == NativeMethods.LINEDEVSTATE_REINIT && msg.dwParam2.ToInt32() == 0)
-                    {
-                        if (ReinitRequired != null)
-                            ReinitRequired(this, EventArgs.Empty);
-                    }
+					{
+						ReinitRequired?.Invoke(this, EventArgs.Empty);
+					}
                     goto case TapiEvent.LINE_CLOSE;
 
                 case TapiEvent.LINE_DEVSPECIFIC:
                     {
-                        TapiCall call = TapiCall.FindCallByHandle(msg.hDevice);
+                        TapiCall call = TapiCall.FindCallByHandle(htCall);
                         if (call != null)
                             ((TapiLine)call.Line).OnDeviceSpecific(call, msg.dwParam1, msg.dwParam2, msg.dwParam3);
                         else
@@ -561,16 +552,16 @@ namespace JulMar.Atapi
                         {
                             foreach (TapiLine currLine in _lineArray)
                             {
-                                if (currLine.Handle.DangerousGetHandle() == (IntPtr)msg.hDevice)
+                                if (currLine.Handle.DangerousGetHandle() == (IntPtr)htCall)
                                 {
                                     line = currLine;
                                     break;
                                 }
                             }
                         }
-                        if (line != null)
-                            line.OnDeviceSpecific(null, msg.dwParam1, msg.dwParam2, msg.dwParam3);
-                    }
+
+						line?.OnDeviceSpecific(null, msg.dwParam1, msg.dwParam2, msg.dwParam3);
+					}
                     break;
 
                 case TapiEvent.LINE_AGENTSTATUS:
@@ -601,9 +592,9 @@ namespace JulMar.Atapi
                         {
                             _phoneArray.Add(newPhone);
                         }
-                        if (PhoneAdded != null)
-                            PhoneAdded(this, new PhoneAddedEventArgs(newPhone));
-                    }
+
+						PhoneAdded?.Invoke(this, new PhoneAddedEventArgs(newPhone));
+					}
                     break;
 
                 case TapiEvent.PHONE_REMOVE:
@@ -617,9 +608,8 @@ namespace JulMar.Atapi
                         if (phone != null)
                         {
                             phone.IsValid = false;
-                            if (PhoneRemoved != null)
-                                PhoneRemoved(this, new PhoneRemovedEventArgs(phone));
-                        }
+							PhoneRemoved?.Invoke(this, new PhoneRemovedEventArgs(phone));
+						}
                     }
                     break;
 
@@ -656,9 +646,9 @@ namespace JulMar.Atapi
                         {
                             _lineArray.Add(newLine);
                         }
-                        if (LineAdded != null)
-                            LineAdded(this, new LineAddedEventArgs(newLine));
-                    }
+
+						LineAdded?.Invoke(this, new LineAddedEventArgs(newLine));
+					}
                     break;
 
                 case TapiEvent.LINE_REMOVE:
@@ -672,9 +662,8 @@ namespace JulMar.Atapi
                         if (line != null)
                         {
                             line.IsValid = false;
-                            if (LineRemoved != null)
-                                LineRemoved(this, new LineRemovedEventArgs(line));
-                        }
+							LineRemoved?.Invoke(this, new LineRemovedEventArgs(line));
+						}
                     }
                     break;
 
@@ -787,7 +776,7 @@ namespace JulMar.Atapi
                     bool remove = false;
                     var entry = _pendingCallStateMessages[i];
                     var msg = entry.Item2;
-                    TapiCall call = TapiCall.FindCallByHandle(msg.hDevice);
+                    TapiCall call = TapiCall.FindCallByHandle(new IntPtr(msg.hDevice));
                     if (call != null)
                     {
                         call.OnCallStateChange(msg.dwParam1.ToInt32(), msg.dwParam2, (MediaModes) msg.dwParam3.ToInt32());
