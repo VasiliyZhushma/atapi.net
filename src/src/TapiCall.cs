@@ -15,6 +15,7 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -363,16 +364,14 @@ namespace JulMar.Atapi
 		private bool _mediaDetection = true;
 		private MonitorTone[] _monitorTones;
 		private EventHandler<ToneDetectedEventArgs> _toneDetectedCb;
-		static private readonly Dictionary<uint, TapiCall> CallsMap = new Dictionary<uint, TapiCall>();
+		static private readonly IDictionary<IntPtr, TapiCall> CallsMap = new ConcurrentDictionary<IntPtr, TapiCall>();
 		#endregion
 
-		internal TapiCall(TapiLine lineOwner, uint hCall)
+		internal TapiCall(TapiLine lineOwner, IntPtr hCall)
 		{
 			_hCall = new HTCALL(hCall, true);
-			lock (CallsMap)
-			{
-				CallsMap.Add(hCall, this);
-			}
+
+			CallsMap.Add(hCall, this);
 
 			GatherCallInfo();
 			GatherCallStatus();
@@ -383,15 +382,13 @@ namespace JulMar.Atapi
             Guid = Guid.NewGuid();
 		}
 
-		internal TapiCall(TapiAddress addrOwner, uint hCall)
+		internal TapiCall(TapiAddress addrOwner, IntPtr hCall)
 		{
 			_hCall = new HTCALL(hCall, true);
 			_addrOwner = addrOwner;
             _lineOwner = (TapiLine)_addrOwner.Line;
-			lock (CallsMap)
-			{
-				CallsMap.Add(hCall, this);
-			}
+
+			CallsMap.Add(hCall, this);
 
 			GatherCallInfo();
 			GatherCallStatus();
@@ -405,10 +402,7 @@ namespace JulMar.Atapi
 			TapiManager.ReportQueuedCallStateChanges();
 		}
 
-		internal HTCALL Handle
-		{
-			get { return _hCall; }
-		}
+		internal HTCALL Handle => _hCall;
 
 		/// <summary>
 		/// This returns the underlying HTCALL which you can use in your
@@ -425,17 +419,9 @@ namespace JulMar.Atapi
 			get { return _lineOwner.TapiManager; }
 		}
 
-		internal static TapiCall FindCallByHandle(uint htCall)
+		internal static TapiCall FindCallByHandle(IntPtr htCall)
 		{
-			lock (CallsMap)
-			{
-				TapiCall theCall;
-				if (CallsMap.TryGetValue(htCall, out theCall))
-				{
-					return theCall;
-				}
-			}
-			return null;
+			return CallsMap.TryGetValue(htCall, out var theCall) ? theCall : null;
 		}
 
 		/// <summary>
@@ -513,7 +499,7 @@ namespace JulMar.Atapi
 
 			set
 			{
-				int len = (value != null) ? value.Length : 0;
+				int len = value?.Length ?? 0;
 				if (len > Address.Capabilities.MaxCallDataSize)
 					len = Address.Capabilities.MaxCallDataSize;
 
@@ -1684,7 +1670,7 @@ namespace JulMar.Atapi
 					Marshal.Copy(pLcl, rawBuffer, 0, lcl.dwUsedSize);
 					for (int i = 0; i < lcl.dwCallsNumEntries; i++)
 					{
-						uint hCall = (uint) BitConverter.ToInt32(rawBuffer, lcl.dwCallsOffset + (i * 4));
+						var hCall = new IntPtr(BitConverter.ToUInt32(rawBuffer, lcl.dwCallsOffset + i * 4));
 						TapiCall call = FindCallByHandle(hCall) ?? new TapiCall(_lineOwner, hCall);
 						callList.Add(call);
 					}
@@ -2097,8 +2083,7 @@ namespace JulMar.Atapi
 				if (mcp != null && !String.IsNullOrEmpty(mcp.TargetAddress))
 					callFlags |= NativeMethods.LINECALLPARAMFLAGS_NOHOLDCONFERENCE;
 				lpCp = MakeCallParams.ProcessCallParams(Address.Id, mcp, callFlags);
-				uint hCall;
-				int rc = NativeMethods.linePrepareAddToConference(Handle, out hCall, lpCp);
+				int rc = NativeMethods.linePrepareAddToConference(Handle, out var hCall, lpCp);
 				if (rc < 0)
 				{
 					throw new TapiException("linePrepareAddToConference failed", rc);
@@ -2341,8 +2326,7 @@ namespace JulMar.Atapi
 				if (mcp != null && !String.IsNullOrEmpty(mcp.TargetAddress))
 					callFlags |= NativeMethods.LINECALLPARAMFLAGS_NOHOLDCONFERENCE;
 				lpCp = MakeCallParams.ProcessCallParams(Address.Id, mcp, callFlags);
-				uint hCall, hConfCall;
-				int rc = NativeMethods.lineSetupConference(Handle, new HTLINE(), out hConfCall, out hCall, conferenceCount, lpCp);
+				int rc = NativeMethods.lineSetupConference(Handle, new HTLINE(), out var hConfCall, out var hCall, conferenceCount, lpCp);
 				if (rc < 0)
 				{
 					throw new TapiException("lineSetupConference failed", rc);
@@ -2357,7 +2341,7 @@ namespace JulMar.Atapi
 					if (req.Result < 0)
 						throw new TapiException("lineSetupConference failed", req.Result);
 
-					if (hCall != 0)
+					if (hCall != IntPtr.Zero)
 					{
 						consultCall = new TapiCall(_addrOwner, hCall);
                         _addrOwner.AddCall(consultCall);
@@ -2395,9 +2379,7 @@ namespace JulMar.Atapi
 				if (param != null && !String.IsNullOrEmpty(param.TargetAddress))
 					callFlags |= NativeMethods.LINECALLPARAMFLAGS_ONESTEPTRANSFER;
 				lpCp = MakeCallParams.ProcessCallParams(Address.Id, param, callFlags);
-				uint hCall;
-
-				int rc = NativeMethods.lineSetupTransfer(Handle, out hCall, lpCp);
+				int rc = NativeMethods.lineSetupTransfer(Handle, out var hCall, lpCp);
 				if (rc < 0)
 					throw new TapiException("lineSetupTransfer failed", rc);
 				else
@@ -2410,7 +2392,7 @@ namespace JulMar.Atapi
 					if (req.Result < 0)
 						throw new TapiException("lineSetupTransfer failed", req.Result);
 
-					if (hCall != 0)
+					if (hCall != IntPtr.Zero)
 					{
 						var call = new TapiCall(_addrOwner, hCall);
                         _addrOwner.AddCall(call);
@@ -2435,8 +2417,7 @@ namespace JulMar.Atapi
 			if (consultationCall == null)
 				throw new ArgumentNullException("consultationCall");
 
-			uint htConfCall;
-			int rc = NativeMethods.lineCompleteTransfer(Handle, consultationCall.Handle, out htConfCall, NativeMethods.LINETRANSFERMODE_TRANSFER);
+			int rc = NativeMethods.lineCompleteTransfer(Handle, consultationCall.Handle, out var htConfCall, NativeMethods.LINETRANSFERMODE_TRANSFER);
 			if (rc < 0)
 				throw new TapiException("lineCompleteTransfer failed", rc);
 			
@@ -2459,8 +2440,7 @@ namespace JulMar.Atapi
 			if (consultationCall == null)
 				throw new ArgumentNullException("consultationCall");
 
-			uint hCall;
-			int rc = NativeMethods.lineCompleteTransfer(Handle, consultationCall.Handle, out hCall, NativeMethods.LINETRANSFERMODE_CONFERENCE);
+			int rc = NativeMethods.lineCompleteTransfer(Handle, consultationCall.Handle, out var hCall, NativeMethods.LINETRANSFERMODE_CONFERENCE);
 			if (rc < 0)
 				throw new TapiException("lineCompleteTransfer failed", rc);
 			
@@ -2593,10 +2573,8 @@ namespace JulMar.Atapi
 		internal void ForceClose()
 		{
             _addrOwner.RemoveCall(this);
-			lock (CallsMap)
-			{
-				CallsMap.Remove((uint)_hCall.DangerousGetHandle().ToInt32());
-			}
+
+			CallsMap.Remove(_hCall.DangerousGetHandle());
 
 			_hCall.SetHandleAsInvalid();
 			CallState oldState = _callState;
@@ -2607,10 +2585,7 @@ namespace JulMar.Atapi
 		internal void Deallocate()
 		{
             _addrOwner.RemoveCall(this);
-			lock (CallsMap)
-			{
-				CallsMap.Remove((uint)_hCall.DangerousGetHandle().ToInt32());
-			}
+			CallsMap.Remove(_hCall.DangerousGetHandle());
 			_hCall.Close();
 		}
 
@@ -2637,7 +2612,7 @@ namespace JulMar.Atapi
 					e = new DisconnectedCallStateEventArgs(this, cs, CallState, (DisconnectModes)stateData.ToInt32(), mediaModes);
 					break;
 				case CallState.Conferenced:
-					e = new ConferencedCallStateEventArgs(this, cs, CallState, FindCallByHandle((uint)stateData.ToInt32()), mediaModes);
+					e = new ConferencedCallStateEventArgs(this, cs, CallState, FindCallByHandle(stateData), mediaModes);
 					break;
 				default:
 					e = new CallStateEventArgs(this, cs, CallState, mediaModes);

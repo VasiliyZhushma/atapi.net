@@ -816,9 +816,8 @@ namespace JulMar.Atapi
 			_deviceId = deviceId;
             _lcb = LineCallback;
 
-            LINEEXTENSIONID extId;
-            int rc = NativeMethods.lineNegotiateAPIVersion(_mgr.LineHandle, _deviceId, 
-                        MinTapiVersion, MaxTapiVersion, out _negotiatedVersion, out extId);
+			int rc = NativeMethods.lineNegotiateAPIVersion(_mgr.LineHandle, _deviceId, 
+                        MinTapiVersion, MaxTapiVersion, out _negotiatedVersion, out var extId);
             if (rc == NativeMethods.LINEERR_OK)
             {
                 IsValid = true;
@@ -1153,8 +1152,7 @@ namespace JulMar.Atapi
             }
             mediaMode &= Capabilities.MediaModes;
 
-            uint hLine;
-            int rc = NativeMethods.lineOpen(_mgr.LineHandle, _deviceId, out hLine, _negotiatedVersion, _negotiatedExtVersion,
+            int rc = NativeMethods.lineOpen(_mgr.LineHandle, _deviceId, out var hLine, _negotiatedVersion, _negotiatedExtVersion,
                 Marshal.GetFunctionPointerForDelegate(_lcb), privilege, (int) mediaMode, ref lcp);
 
             if (rc == NativeMethods.LINEERR_OK)
@@ -1361,9 +1359,8 @@ namespace JulMar.Atapi
             try
             {
                 lpCp = MakeCallParams.ProcessCallParams(0, param, 0);
-                uint hCall;
-
-                int rc = NativeMethods.lineForward(Handle, 1, 0, fwdList, numRingsNoAnswer, out hCall, lpCp);
+                
+                int rc = NativeMethods.lineForward(Handle, 1, 0, fwdList, numRingsNoAnswer, out var hCall, lpCp);
                 if (rc < 0)
                     throw new TapiException("lineForward failed", rc);
                 else
@@ -1376,7 +1373,7 @@ namespace JulMar.Atapi
                     if (req.Result < 0)
                         throw new TapiException("lineForward failed", req.Result);
 
-                    if (hCall != 0)
+                    if (hCall != IntPtr.Zero)
                     {
                         var call = new TapiCall(this, hCall);
                         TapiAddress addrOwner = (TapiAddress)call.Address;
@@ -1401,8 +1398,7 @@ namespace JulMar.Atapi
         /// </summary>
         public void CancelForward()
         {
-            uint hCall;
-            int rc = NativeMethods.lineForward(Handle, 1, 0, IntPtr.Zero, 0, out hCall, IntPtr.Zero);
+            int rc = NativeMethods.lineForward(Handle, 1, 0, IntPtr.Zero, 0, out var hCall, IntPtr.Zero);
             if (rc < 0)
                 throw new TapiException("lineForward failed", rc);
             
@@ -1414,8 +1410,8 @@ namespace JulMar.Atapi
             {
                 if (req.Result < 0)
                     throw new TapiException("lineForward failed", req.Result);
-                if (hCall != 0)
-                    NativeMethods.lineDeallocateCall(hCall);
+                if (hCall != IntPtr.Zero)
+                    NativeMethods.lineDeallocateCall(new HTCALL(hCall, true));
             }
         }
         #endregion
@@ -1636,13 +1632,13 @@ namespace JulMar.Atapi
 
                 case TapiEvent.LINE_CLOSE:
                     _hLine.SetHandleAsInvalid();
-                    foreach (TapiAddress addr in Addresses)
-                        addr.ClearCalls();
+                    foreach (var addr in Addresses)
+                        (addr as TapiAddress)?.ClearCalls();
                     GatherStatus();
                     break;
 
                 case TapiEvent.LINE_APPNEWCALL:
-                    HandleNewCall(new TapiCall(_addresses[dwParam1.ToInt32()], (uint)dwParam2.ToInt32()), dwParam3.ToInt32());
+                    HandleNewCall(new TapiCall(_addresses[dwParam1.ToInt32()], dwParam2), dwParam3.ToInt32());
                     break;
 
                 case TapiEvent.LINE_DEVSPECIFIC:
@@ -1650,7 +1646,7 @@ namespace JulMar.Atapi
                     break;
 
                 default:
-                    System.Diagnostics.Debug.Assert(false, string.Format("Unknown Tapi Event {0} encountered in Line Handler", dwMessage.ToString()));
+                    System.Diagnostics.Debug.Assert(false, $"Unknown Tapi Event {dwMessage.ToString()} encountered in Line Handler");
                     break;
             }
         }
